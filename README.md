@@ -54,7 +54,7 @@ Nevertheless, notice that these standalone experiences are not directly managed 
 #### **1.2.1. Only defences**
 
 Defences are located in the `defences/` folder. Details about specific defence parameters can be found in the `parse_arguments()` function of every defence. For example, to run a label smoothing training use:  
-> `python defences/label_smoothing.py --model resnet18 --dataset CIFAR10 --random_seed 111 --nb_epochs 100`
+> python defences/label_smoothing.py --model resnet18 --dataset CIFAR10 --random_seed 111 --nb_epochs 100
 
 #### **1.2.2. Only attacks**
 
