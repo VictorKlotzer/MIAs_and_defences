@@ -1,0 +1,6 @@
+batchsize: 64
+nb_epochs: 30
+temperatures_min: 0.5
+temperatures_max: 2.0
+relaxloss_alpha: 1
+relaxloss_upper: 1

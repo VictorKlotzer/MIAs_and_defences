@@ -74,7 +74,7 @@ def run_defences(args, results_dir):
         print(f'\n##  Defence {defence}')
         torch.cuda.empty_cache()
 
-        defence_done_file = os.path.join(results_dir, defence, 'done.txt')
+        defence_done_file = os.path.join(results_dir, 'defences', defence, 'done.txt')
         if os.path.exists(defence_done_file):
             print(f'Already done (remove {defence_done_file} file if you want to retrain)')
         else:
@@ -125,14 +125,14 @@ def run_attacks(args, results_dir):
         print(f'\n##  Attack {defence}')
         torch.cuda.empty_cache()
         
-        done_file = os.path.join(results_dir, f'{defence}', 'attacks', 'done.txt')
+        done_file = os.path.join(results_dir, 'defences', defence, 'attacks', 'done.txt')
         if defence == 'rtt': # to run attacks for all trained rtt versions
             rtt_versions = []
-            rtt_dir = os.path.join(results_dir, 'rtt')
+            rtt_dir = os.path.join(results_dir, 'defences', 'rtt')
             for rtt_ver in [d for d in os.listdir(rtt_dir) if os.path.isdir(os.path.join(rtt_dir, d))]:
                 rtt_versions.append(rtt_ver)
             
-            done_file = os.path.join(results_dir, f'rtt/{rtt_versions[-1]}', 'attacks', 'done.txt')
+            done_file = os.path.join(results_dir, 'defences', f'rtt/{rtt_versions[-1]}', 'attacks', 'done.txt')
         
         if os.path.exists(done_file):
             print(f'Already done (remove {done_file} file if you want to re-attack)')
@@ -161,7 +161,7 @@ def __ROC_curves_per_attack(attack, defences, xmin =None):
     defences_to_remove = []
     for defence in defences_copy:
         try:
-            fprs_tprs = np.load(os.path.join(results_dir, defence, 'attacks', f'fpr_tpr_{attack}.npy'))
+            fprs_tprs = np.load(os.path.join(results_dir, 'defences', defence, 'attacks', 'fpr_tpr', f'{attack}.npy'))
             list_fprs.append(fprs_tprs[:, 0])
             list_tprs.append(fprs_tprs[:, 1])
         except:
@@ -207,8 +207,8 @@ def __plot_challengers_curves(defences, results_dir):
     plt.subplots_adjust(hspace=.5)
 
     for i, defence in enumerate(defences):
-        losses      = np.load( os.path.join(results_dir, defence, 'attacks', 'challengers', 'losses.npy') )
-        mem_or_nmem = np.load( os.path.join(results_dir, defence, 'attacks', 'challengers', 'mem_or_nmem.npy') )
+        losses      = np.load( os.path.join(results_dir, 'defences', defence, 'attacks', 'challengers', 'losses.npy') )
+        mem_or_nmem = np.load( os.path.join(results_dir, 'defences', defence, 'attacks', 'challengers', 'mem_or_nmem.npy') )
         loss_mem  = losses[mem_or_nmem]
         loss_nmem = losses[~mem_or_nmem]
 
@@ -265,9 +265,9 @@ def __plot_challengers_curves(defences, results_dir):
     plt.subplots_adjust(hspace=.5)
 
     for i, defence in enumerate(defences):
-        probits      = np.load( os.path.join(results_dir, defence, 'attacks', 'challengers', 'probits.npy') )
-        labels      = np.load( os.path.join(results_dir, defence, 'attacks', 'challengers', 'labels.npy') )
-        mem_or_nmem = np.load( os.path.join(results_dir, defence, 'attacks', 'challengers', 'mem_or_nmem.npy') )
+        probits      = np.load( os.path.join(results_dir, 'defences', defence, 'attacks', 'challengers', 'probits.npy') )
+        labels      = np.load( os.path.join(results_dir, 'defences', defence, 'attacks', 'challengers', 'labels.npy') )
+        mem_or_nmem = np.load( os.path.join(results_dir, 'defences', defence, 'attacks', 'challengers', 'mem_or_nmem.npy') )
         
         gt_probits = probits[np.arange(len(labels)), labels]
         probits_mem  = gt_probits[mem_or_nmem]
@@ -348,7 +348,7 @@ def compare_attacks_vs_defences(args, results_dir):
 
     if 'rtt' in defences:
         defences.remove('rtt')
-        rtt_dir = os.path.join(results_dir, 'rtt')
+        rtt_dir = os.path.join(results_dir, 'defences', 'rtt')
         for rtt in [d for d in os.listdir(rtt_dir) if os.path.isdir(os.path.join(rtt_dir, d))]:
             defences.append('rtt/' + rtt)
 
@@ -374,7 +374,7 @@ def compare_attacks_vs_defences(args, results_dir):
     nb_epochs     = {}
 
     for d in defences:
-        df_utility = pd.read_table(os.path.join(results_dir, d, 'log.txt'), sep='\t')
+        df_utility = pd.read_table(os.path.join(results_dir, 'defences', d, 'log.txt'), sep='\t')
         df_utility.columns = [str(z).strip() for z in df_utility.columns]
         train_acc[d]  = np.mean(df_utility['Train Acc'].values[-10:])
         test_acc[d]   = np.mean(df_utility['Val Acc'].values[-10:])
@@ -386,19 +386,13 @@ def compare_attacks_vs_defences(args, results_dir):
         tpr_at_001fpr[d] = {}
         for a in attacks:
             try:
-                metrics_attacks = pd.read_table(os.path.join(results_dir, d, 'attacks', f'metrics_{a}.txt'), sep='\t', index_col=0)
+                metrics_attacks = pd.read_table(os.path.join(results_dir, 'defences', d, 'attacks', 'metrics', f'{a}.txt'), sep='\t', index_col=0)
                 auc[d][a]           = metrics_attacks.loc['AUC', a]
                 tpr_at_01fpr[d][a]  = metrics_attacks.loc['TPR@0.1FPR', a]
                 tpr_at_001fpr[d][a] = metrics_attacks.loc['TPR@0.01FPR', a]
             except:
                 pass # if an attack/defence combinaison doesn't exist, no need to compute any attack performance for it
         
-    # markers = {
-    #     'entropy' : 'v',
-    #     'Mentropy' : '^',
-    #     'MAST' : 'o',
-    #     'LiRA' : 'X', # '*', 'P'
-    # }
     markers = ('v', '^', 'o', 'X', 's', '*', 'h', 'H', 'D', 'd', 'P')
     colors  = list(matplotlib.colors.TABLEAU_COLORS.values())
     
@@ -479,7 +473,7 @@ def compare_attacks_vs_defences(args, results_dir):
     ax.legend(['test', 'train'], loc='upper left')
 
     plt.suptitle(f'Attacks/defences summary for model {args.model} on dataset {args.dataset}', fontsize=13, weight='bold')
-    savefig( os.path.join(results_dir, f'recap.png') )
+    savefig( os.path.join(results_dir, 'summary.png') )
 
 
 if __name__ == '__main__':

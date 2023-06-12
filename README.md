@@ -5,7 +5,7 @@ This packages enables to compare the effect of Membership Inference Attacks (MIA
 
 
 For instance:
-![Summary example](recap.png)
+![Summary example](summary_example.png)
 
 
 Currently implemented MIAs:   
@@ -78,7 +78,7 @@ results/resnet18/CIFAR10/seed111
 │  │  │     │  loss.png
 │  │  │     └  model.pt
 │  │  │  
-│  │  │  done.txt // indicates that this folder is completed
+│  │  │  done.txt
 │  │  │  IN_OUT_confs__nb_challengers=5000.pkl
 │  │  │  IN_shadow_models__nb_challengers=5000.pkl
 │  │  │  lira.py // copy of the script used to generate this folder
@@ -117,7 +117,7 @@ results/resnet18/CIFAR10/seed111
 │     │  │  └  LiRA.npy
 │     │  │
 │     │  │  done.txt
-│     │  └  ROC.png //
+│     │  └  ROC.png // ROC of all attacks against this defence (here vanilla)
 │     │  
 │     │  acc.png
 │     │  done.txt // indicates that this folder is completed
@@ -127,7 +127,7 @@ results/resnet18/CIFAR10/seed111
 │     │  params.yml
 │     └  vanilla.py // copy of the script used to generate this folder
 │  
-│  ROC_entropy.png
+│  ROC_entropy.png // ROC of one attack (here entropy) against all defences
 │  ...
 │  ROC_LiRA.png
 └  summary.png
@@ -175,14 +175,19 @@ ___
 It is possible and supposed to be easy to extend this package in order to add other defences, other attacks, other datasets or other model architectures. Here is a detailled explaination to add one of these:
 
 ### **2.1. How to add a defence?**
-*  
+1.  Create a Python script in the `defences/` folder using the `defences/vanilla.py` script as a template.
+2.  In `main.py`, add the name of the defence (identical to the name of the script) to the `available_defences` variable at the top of the `main.py` script.  
+
+This should be it.
 
 ### **2.2. How to add an attack?**
+1.  TODO
 
 ### **2.3. How to add a dataset?**
+1.  TODO
 
 ### **2.4. How to add a model architecture?**
-
+1.  TODO
 
 
 ## **3. Details about implementations choices**

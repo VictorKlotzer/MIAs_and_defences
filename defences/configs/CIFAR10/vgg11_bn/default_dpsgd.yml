@@ -1,0 +1,2 @@
+batchsize: 64
+nb_epochs: 100
