@@ -89,7 +89,7 @@ results/resnet18/CIFAR10/seed111
 │     │  done.txt
 │     │  IN_OUT_losses__nb_challengers=5000.pkl
 │     │  mast.py // copy of the script used to generate this folder
-│     └  params.yml
+│     └  params.yml // hyperparameters
 │  
 ├─ defences  
 │  ├─ advreg
@@ -124,7 +124,7 @@ results/resnet18/CIFAR10/seed111
 │     │  log.txt
 │     │  loss.png
 │     │  model.pt
-│     │  params.yml
+│     │  params.yml // hyperparameters
 │     └  vanilla.py // copy of the script used to generate this folder
 │  
 │  ROC_entropy.png // ROC of one attack (here entropy) against all defences
@@ -172,35 +172,60 @@ ___
 
 ## **2. Extending the package**
 
-It is possible and supposed to be easy to extend this package in order to add other defences, other attacks, other datasets or other model architectures. Here is a detailled explaination to add one of these:
+It is possible and supposed to be fairly easy to extend this package in order to add other defences, other attacks, other datasets or other model architectures. Here are explainations to add one of these:
 
 ### **2.1. How to add a defence?**
-1.  Create a Python script in the `defences/` folder using the `defences/vanilla.py` script as a template.
+1.  Create a Python script in the `defences/` folder using the `defences/vanilla.py` script as a template (make especially sure that the `save_dir` variable defined in the `check_args()` function is the right one).
 2.  In `main.py`, add the name of the defence (identical to the name of the script) to the `available_defences` variable at the top of the `main.py` script.  
 
-This should be it.
 
 ### **2.2. How to add an attack?**
-1.  TODO
+1.  Currently implemented attacks are producing membership scores for each challenger instance. So, a new attack is expected to do the same. In case the generation of these scores needs extra computations (like for LiRA), create a Python script in the `attacks/` folder for the "pre-computations" needed for this new attack (make especially sure that the `save_dir` variable defined in the `check_args()` function is the right one).
+2.  The scores are computed (or retrieved) inside the `attacks/run_attacks.py` script. Add the  name of the attack to the `choice` argument of the `--attacks` option inside the `parse_arguments()` function.
+3.  In `attacks/run_attacks.py`, add the short name and extended name to the `attacks_name` dictionnary of the `Attacks` class.
+4.  In `attacks/run_attacks.py`, add a `__get_[attack_name](self)` function to the `Attacks` class that returns an np.array with the membership scores for all the challengers (the higher the score, the more likely a challenger is a member).
+5.  In `attacks/run_attacks.py`, inside the `get_scores(self, attacks)` function of the `Attacks` class, add the code line:
+```
+if 'ATTACK_NAME' in attacks : scores['ATTACK_NAME'] = self.__get_ATTACK_NAME()
+```
+6.  In `main.py`, add the name of the attack to the `available_attacks` variable at the top of the `main.py` script. 
 
 ### **2.3. How to add a dataset?**
-1.  TODO
+1.  In case you want to define a specific `torch.utils.data.Dataset` for the new dataset, create a Python script for such a class inside the `utils/datasets/` folder (`utils/datasets/cifar.py` can be taken as example).
+2.  In the `utils/datasets/loader.py` script, add a `__[dataset_name](self)` function to the `DatasetLoader` class (the `__cifar10(self)` function can be taken as an example). This function has to define the following attributes:
+  *  `self.nb_classes`: number of classes of the dataset
+  *  `self.tr_set`: a `torch.utils.data.Dataset` of the training data
+  *  `self.te_set`: a `torch.utils.data.Dataset` of the test data
+  *  `self.s_tr_set`: a `torch.utils.data.Dataset` of shadow training data (used to trained the shadow models for LiRA for instance, this can be the same as the training data if case you don't have enough data)
+  *  `self.s_te_set`: a `torch.utils.data.Dataset` of shadow test data
+  *  `self.chal_set`: a `torch.utils.data.Dataset` of shadow test data
+  *  `self.dataloader`: a `torch.utils.data.DataLoader` to use for the above Datasets, defining especially the batchsize to use for this dataset.
+3.  In `utils/datasets/loader.py`, in the `__init__(self, ...)` function of the `DatasetLoader` class, add the following code lines:
+```
+elif dataset_name == 'DATASET_NAME':
+    self.__DATASET_NAME()
+```
+4.  In `main.py`, add the name of the dataset to the `available_datasets` variable at the top of the `main.py` script. 
 
 ### **2.4. How to add a model architecture?**
-1.  TODO
+1.  Add a new Python script defining the new model architecture inside the `utils/models/` folder (`utils/models/resnet.py` can be taken as example).
+2.  Inside this new script, redefine the `__all__` variable to list all the model architecture variants (see `utils/models/resnet.py`).
+3.  Each model architecture needs to have one single parameter for the number of output classes of that network (e.g. `def resnet18(nb_classes):`).
+4.  In the `utils/models/__init__.py` script, add one code line for the newly created model architecture script: 
+```
+from .[model_architecture_script] import *
+```
+5.  In `main.py`, add the name of the dataset to the `available_models` variable at the top of the `main.py` script.
 
+___
 
-## **3. Details about implementations choices**
-### but no intermediate model weights are save for epoch time reduction.
-### Optimizer always Adam, ResNet a correcly tuned SGD with momentum and weight decay might be better
-### How LiRA
-### How MAST
-### Where other codes come from
-https://github.com/inspire-group/membership-inference-evaluation (adv reg)  
-https://github.com/jinyuan-jia/MemGuard (memguard)  
-https://github.com/DingfanChen/RelaxLoss (Relaxloss)
+## **3. Few details about implementations choices**
+*  The code structure presented was inspired by the GitHub from the RelaxLoss paper https://github.com/DingfanChen/RelaxLoss, as well as from the GitHub of MemGuard defence https://github.com/jinyuan-jia/MemGuard and the Adversarial Regularization defence https://github.com/inspire-group/membership-inference-evaluation.
+*  There are no intermediate model weights saves to reduce the computation time of one epoch; models are just saved once all epoch are done. This is especially useful to avoid extending the training time of LiRA shadow models.
+*  The optimizer used so far is always Adam, but especially for ResNet using a well tuned SGD optimizer with momentum and weight decay might be better.
+*  For LiRA, $k\in \mathbb N$ IN shadow models $s_1, \dots, s_k$ and $k$ OUT shadow models $s_{k+1}, \dots, s_{2k}$ need to be trained for each of the $m$ challengers. Originally, for a given challenger $c_i$ $k$ OUT shadow models are trained $c_i$, and $k$ IN shadows models are trained on the same training data plus the one challenger $c_i$. To avoid training $k+m\times k$ shadow models ($k$ OUT + $k$ IN for each challenger), we train here only $2k$ shadow models the following way: each shadow model include a randomly drawn half of the $m$ challengers, such that in the end, for each challenger $c_i$ there are $k$ model trained on $c_i$ and $k$ models trained without $c_i$. The matrix of size $m\times 2k$ saying for each challenger $c_i$ ($i\in [\![1, m]\!]$) whether the shadow model $s_j$ ($j\in [\![1, 2k]\!]$) is IN or OUT for this challenger is save in the intermediate file `results/[model_architecture]/[dataset]/[seed]/attacks/lira/attacks/IN_shadow_models__nb_challengers=XX.pkl` (see the Example of files generated for one experiment in section 1.2). 
 
+___
 
-## **TODO**
-*  Give dataset sizes
-*  Add continue model training procedure
+## **Conctact**
+For any question, you can send an email at klotzer.victor@gmail.com.
