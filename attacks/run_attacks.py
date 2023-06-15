@@ -30,7 +30,6 @@ def parse_arguments():
                         # choices=['vanilla', 'dpsgd', 'advreg', 'relaxloss', 'label_smoothing', 'rtt']
     parser.add_argument('--attacks', nargs='+', type=str, help='list of attacks to run on the target model (if multiple attacks, seperated with a blank space)',
                         choices=['all', 'entropy', 'Mentropy', 'MAST', 'LiRA',
-                                 'LSattack',
                                  'MAST_label_smoothing', 'LiRA_label_smoothing'])    
     return parser
 
@@ -62,7 +61,6 @@ class Attacks():
         'Mentropy' : 'Mentropy (Song et al.)',
         'MAST' : 'MAST (Sablayrolles et al.)',
         'LiRA' : 'LiRA (Carlini et al.)',
-        'LSattack' : 'Attack for LabelSmoothing',
         'MAST_label_smoothing' : 'MAST_label_smoothing',
         'LiRA_label_smoothing' : 'LiRA_label_smoothing',
     }
@@ -127,12 +125,6 @@ class Attacks():
         self.logits = logits.cpu().numpy()
         self.losses = losses.cpu().numpy()
         self.probits = probits.numpy()
-        # self.intermediate = {
-        #     'interm_h1'   : None, 
-        #     'interm_h2'   : None, 
-        #     'interm_h3'   : None, 
-        #     'interm_h4'   : None, 
-        # }
 
         self.__save_challengers_infos()
 
@@ -228,7 +220,6 @@ class Attacks():
         if 'Mentropy' in attacks : scores['Mentropy'] = self.__get_Mentropy_scores()
         if 'MAST' in attacks     : scores['MAST']     = self.__get_mast_scores()
         if 'LiRA' in attacks     : scores['LiRA']     = self.__get_lira_scores()
-        if 'LSattack' in attacks : scores['LSattack'] = self.__get_LSattack_scores()
         if 'MAST_label_smoothing' in attacks:
             s = self.__get_mast_scores(shadows_defence='_label_smoothing') # returns None if can't be computed
             if s is not None:
@@ -258,24 +249,25 @@ class Attacks():
         modified_log_probs[range(len(self.labels)), self.labels] = log_probs[range(len(self.labels)), self.labels]
         return -np.sum(np.multiply(modified_probs, modified_log_probs), axis=1)
     
-    def __get_LSattack_scores(self):
-        kl_divergence = lambda p, q: np.sum(np.where(p != 0, p * np.log(p / q), 0))
+    # def __get_LSattack_scores(self):
+    #     """Attack specific for the label smoothing defence, computing KL divergence between expected ditribution and observed probit distribution"""
+    #     kl_divergence = lambda p, q: np.sum(np.where(p != 0, p * np.log(p / q), 0))
     
-        eps = .1
-        nb_classes = len(set(self.labels))
-        gt = eps * np.ones(nb_classes) / nb_classes
-        gt_per_label = {}
-        for label in set(self.labels):
-            tmp_gt = gt.copy()
-            tmp_gt[label] = 1 + eps * (1 - nb_classes) / nb_classes
-            gt_per_label[label] = tmp_gt
+    #     eps = .1
+    #     nb_classes = len(set(self.labels))
+    #     gt = eps * np.ones(nb_classes) / nb_classes
+    #     gt_per_label = {}
+    #     for label in set(self.labels):
+    #         tmp_gt = gt.copy()
+    #         tmp_gt[label] = 1 + eps * (1 - nb_classes) / nb_classes
+    #         gt_per_label[label] = tmp_gt
         
 
-        scores = []
-        for l, p in zip(self.labels, self.probits):
-            scores.append( kl_divergence(gt_per_label[l], p) )
+    #     scores = []
+    #     for l, p in zip(self.labels, self.probits):
+    #         scores.append( kl_divergence(gt_per_label[l], p) )
 
-        return -np.array(scores)
+    #     return -np.array(scores)
     
     def __get_mast_scores(self, shadows_defence =''):
         """Compute the MAST scores"""
@@ -312,8 +304,6 @@ class Attacks():
             sum_without_y_coord = np.sum(sum_without_y_coord, axis=1)
             confs_target = np.log(before_logit +log_epsilon) - np.log(sum_without_y_coord +log_epsilon)
 
-            #TODO df_membership_scores[name][('accAttack', ver)] = labels == np.argmax(pred_scores, axis=1)
-
             # Compute the statistic (for every instance)
             membership_scores = []
             for c, mIN, sIN, mOUT, sOUT in zip(
@@ -328,11 +318,6 @@ class Attacks():
             return np.array(membership_scores)
 
 
-# given a target model, run different attacks,
-# compute utility,
-# compute AUC and ROC
-# store all result in given target model dir path
-
 #############################################################################################################
 # main function
 #############################################################################################################
@@ -341,11 +326,6 @@ def main():
 
     attacks = Attacks(args, save_dir, attacks_dir)
     attacks.plot_ROC_curves(xmin=3e-3)
-
-
-    ####TODO problem with number of challengers for lira
-    # TODO run lira from here if not already trained
-
 
 
 if __name__ == '__main__':

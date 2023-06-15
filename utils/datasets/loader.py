@@ -9,7 +9,7 @@ DATA_ROOT = os.path.join(FILE_DIR, 'data')
 sys.path.append(os.path.join(FILE_DIR, '../'))
 
 from utils.helper import mkdir
-from .cifar import CIFAR2, CIFAR10, CIFAR100
+from .cifar import CIFAR10, CIFAR100
 
 
 class DatasetLoader():
@@ -29,9 +29,7 @@ class DatasetLoader():
         mkdir(self.idx_dir)
         
         print(f'Loading dataset {dataset_name}...')
-        if dataset_name == 'CIFAR2':
-            self.__cifar2()
-        elif dataset_name == 'CIFAR10':
+        if dataset_name == 'CIFAR10':
             self.__cifar10()
         elif dataset_name == 'CIFAR100':
             self.__cifar100()

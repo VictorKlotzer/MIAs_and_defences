@@ -13,10 +13,9 @@ FILE_DIR = os.path.dirname(os.path.abspath(__file__))
 
 available_defences = ['vanilla', 'dpsgd', 'label_smoothing', 'advreg', 'relaxloss', 'rtt', 'ttltt']
 available_attacks  = ['entropy', 'Mentropy', 'MAST', 'LiRA',
-                      'LSattack',
                       'MAST_label_smoothing', 'LiRA_label_smoothing']
 available_models   = ['mlp1', 'resnet18', 'vgg11', 'vgg11_bn']
-available_datasets = ['CIFAR2', 'CIFAR10', 'CIFAR100']
+available_datasets = ['CIFAR10', 'CIFAR100']
 
 def parse_arguments():
     parser = argparse.ArgumentParser()
@@ -94,30 +93,32 @@ def run_defences(args, results_dir):
 
 def run_attacks(args, results_dir):
     ## Train LiRA
-    print(f'\n##  Train LiRA')
-    torch.cuda.empty_cache()
-    done_file = os.path.join(results_dir, 'attacks', 'lira', 'done.txt')
-    if os.path.exists(done_file):
-        print(f'Already done (remove {done_file} file if you want to retrain)')
-    else:
-        command = f'python attacks/lira.py'
-        command += f' --model {args.model} --dataset {args.dataset} -s {args.random_seed}'
-        status = os.system(command)
-        if status == 0:
-            open(done_file, 'w').close()
+    if args.attacks == 'all' or 'LiRA' in args.attacks:
+        print(f'\n##  Train LiRA')
+        torch.cuda.empty_cache()
+        done_file = os.path.join(results_dir, 'attacks', 'lira', 'done.txt')
+        if os.path.exists(done_file):
+            print(f'Already done (remove {done_file} file if you want to retrain)')
+        else:
+            command = f'python attacks/lira.py'
+            command += f' --model {args.model} --dataset {args.dataset} -s {args.random_seed}'
+            status = os.system(command)
+            if status == 0:
+                open(done_file, 'w').close()
 
     ## Prepare MAST
-    print(f'\n##  Prepare MAST')
-    torch.cuda.empty_cache()
-    done_file = os.path.join(results_dir, 'attacks', 'mast', 'done.txt')
-    if os.path.exists(done_file):
-        print(f'Already done (remove {done_file} file if you want to retrain)')
-    else:
-        command = f'python attacks/mast.py'
-        command += f' --model {args.model} --dataset {args.dataset} -s {args.random_seed}'
-        status = os.system(command)
-        if status == 0:
-            open(done_file, 'w').close()
+    if args.attacks == 'all' or 'MAST' in args.attacks:
+        print(f'\n##  Prepare MAST')
+        torch.cuda.empty_cache()
+        done_file = os.path.join(results_dir, 'attacks', 'mast', 'done.txt')
+        if os.path.exists(done_file):
+            print(f'Already done (remove {done_file} file if you want to retrain)')
+        else:
+            command = f'python attacks/mast.py'
+            command += f' --model {args.model} --dataset {args.dataset} -s {args.random_seed}'
+            status = os.system(command)
+            if status == 0:
+                open(done_file, 'w').close()
 
     ## Run attacks
     defences = args.defences if not args.defences == 'all' else available_defences
@@ -197,147 +198,97 @@ def __ROC_curves_per_attack(attack, defences, xmin =None):
     savefig( os.path.join(results_dir, f'ROC_{attack}.png') )
 
 
-def __plot_challengers_curves(defences, results_dir):
-    ###########################
-    ## Losses
-    plt.clf()
-    n_col = 4
-    n_row = (len(defences)-1)//n_col + 1
-    fig, axs = plt.subplots(n_row, n_col, dpi=150, figsize=(n_col*3, n_row*3))
-    plt.subplots_adjust(hspace=.5)
+# def __plot_challengers_curves(defences, results_dir):
+#     ###########################
+#     ## Losses
+#     plt.clf()
+#     n_col = 4
+#     n_row = (len(defences)-1)//n_col + 1
+#     fig, axs = plt.subplots(n_row, n_col, dpi=150, figsize=(n_col*3, n_row*3))
+#     plt.subplots_adjust(hspace=.5)
 
-    for i, defence in enumerate(defences):
-        losses      = np.load( os.path.join(results_dir, 'defences', defence, 'attacks', 'challengers', 'losses.npy') )
-        mem_or_nmem = np.load( os.path.join(results_dir, 'defences', defence, 'attacks', 'challengers', 'mem_or_nmem.npy') )
-        loss_mem  = losses[mem_or_nmem]
-        loss_nmem = losses[~mem_or_nmem]
+#     for i, defence in enumerate(defences):
+#         losses      = np.load( os.path.join(results_dir, 'defences', defence, 'attacks', 'challengers', 'losses.npy') )
+#         mem_or_nmem = np.load( os.path.join(results_dir, 'defences', defence, 'attacks', 'challengers', 'mem_or_nmem.npy') )
+#         loss_mem  = losses[mem_or_nmem]
+#         loss_nmem = losses[~mem_or_nmem]
 
-        ax = axs[i//n_col, i%n_col]
-        ax.hist(loss_mem, bins=30, histtype='step', label='members')
-        ax.hist(loss_nmem, bins=30, histtype='step', label='non-members')
-        ax.set_yscale('log')
-        ax.set_title(defence, fontsize=10)
-        ax.legend(fontsize=9)
+#         ax = axs[i//n_col, i%n_col]
+#         ax.hist(loss_mem, bins=30, histtype='step', label='members')
+#         ax.hist(loss_nmem, bins=30, histtype='step', label='non-members')
+#         ax.set_yscale('log')
+#         ax.set_title(defence, fontsize=10)
+#         ax.legend(fontsize=9)
     
-    i += 1
-    while i < n_col*n_row:
-        axs[i//n_col, i%n_col].axis('off')
-        i += 1
+#     i += 1
+#     while i < n_col*n_row:
+#         axs[i//n_col, i%n_col].axis('off')
+#         i += 1
 
-    plt.suptitle(f'Challenger losses for model {args.model} on dataset {args.dataset}')
-    savefig( os.path.join(results_dir, 'challengers_losses.png') )
+#     plt.suptitle(f'Challenger losses for model {args.model} on dataset {args.dataset}')
+#     savefig( os.path.join(results_dir, 'challengers_losses.png') )
 
-    ###########################
-    ## Logits
-    plt.clf()
-    n_col = 4
-    n_row = (len(defences)-1)//n_col + 1
-    fig, axs = plt.subplots(n_row, n_col, dpi=150, figsize=(n_col*3, n_row*3))
-    plt.subplots_adjust(hspace=.5)
+#     ###########################
+#     ## Logits
+#     plt.clf()
+#     n_col = 4
+#     n_row = (len(defences)-1)//n_col + 1
+#     fig, axs = plt.subplots(n_row, n_col, dpi=150, figsize=(n_col*3, n_row*3))
+#     plt.subplots_adjust(hspace=.5)
 
-    for i, defence in enumerate(defences):
-        logits      = np.load( os.path.join(results_dir, defence, 'attacks', 'challengers', 'logits.npy') )
-        mem_or_nmem = np.load( os.path.join(results_dir, defence, 'attacks', 'challengers', 'mem_or_nmem.npy') )
-        logits_mem  = logits[mem_or_nmem].max(axis=-1)
-        logits_nmem = logits[~mem_or_nmem].max(axis=-1)
+#     for i, defence in enumerate(defences):
+#         logits      = np.load( os.path.join(results_dir, defence, 'attacks', 'challengers', 'logits.npy') )
+#         mem_or_nmem = np.load( os.path.join(results_dir, defence, 'attacks', 'challengers', 'mem_or_nmem.npy') )
+#         logits_mem  = logits[mem_or_nmem].max(axis=-1)
+#         logits_nmem = logits[~mem_or_nmem].max(axis=-1)
 
-        ax = axs[i//n_col, i%n_col]
-        ax.hist(logits_mem, bins=30, histtype='step', label='members')
-        ax.hist(logits_nmem, bins=30, histtype='step', label='non-members')
-        ax.set_yscale('log')
-        ax.set_title(defence, fontsize=10)
-        ax.legend(fontsize=9)
+#         ax = axs[i//n_col, i%n_col]
+#         ax.hist(logits_mem, bins=30, histtype='step', label='members')
+#         ax.hist(logits_nmem, bins=30, histtype='step', label='non-members')
+#         ax.set_yscale('log')
+#         ax.set_title(defence, fontsize=10)
+#         ax.legend(fontsize=9)
     
-    i += 1
-    while i < n_col*n_row:
-        axs[i//n_col, i%n_col].axis('off')
-        i += 1
+#     i += 1
+#     while i < n_col*n_row:
+#         axs[i//n_col, i%n_col].axis('off')
+#         i += 1
 
-    plt.suptitle(f'Challenger logits for model {args.model} on dataset {args.dataset}')
-    savefig( os.path.join(results_dir, 'challengers_logits.png') )
+#     plt.suptitle(f'Challenger logits for model {args.model} on dataset {args.dataset}')
+#     savefig( os.path.join(results_dir, 'challengers_logits.png') )
 
-    ###########################
-    ## Probits
-    plt.clf()
-    n_col = 4
-    n_row = (len(defences)-1)//n_col + 1
-    fig, axs = plt.subplots(n_row, n_col, dpi=150, figsize=(n_col*3, n_row*3))
-    plt.subplots_adjust(hspace=.5)
+#     ###########################
+#     ## Probits
+#     plt.clf()
+#     n_col = 4
+#     n_row = (len(defences)-1)//n_col + 1
+#     fig, axs = plt.subplots(n_row, n_col, dpi=150, figsize=(n_col*3, n_row*3))
+#     plt.subplots_adjust(hspace=.5)
 
-    for i, defence in enumerate(defences):
-        probits      = np.load( os.path.join(results_dir, 'defences', defence, 'attacks', 'challengers', 'probits.npy') )
-        labels      = np.load( os.path.join(results_dir, 'defences', defence, 'attacks', 'challengers', 'labels.npy') )
-        mem_or_nmem = np.load( os.path.join(results_dir, 'defences', defence, 'attacks', 'challengers', 'mem_or_nmem.npy') )
+#     for i, defence in enumerate(defences):
+#         probits      = np.load( os.path.join(results_dir, 'defences', defence, 'attacks', 'challengers', 'probits.npy') )
+#         labels      = np.load( os.path.join(results_dir, 'defences', defence, 'attacks', 'challengers', 'labels.npy') )
+#         mem_or_nmem = np.load( os.path.join(results_dir, 'defences', defence, 'attacks', 'challengers', 'mem_or_nmem.npy') )
         
-        gt_probits = probits[np.arange(len(labels)), labels]
-        probits_mem  = gt_probits[mem_or_nmem]
-        probits_nmem = gt_probits[~mem_or_nmem]
+#         gt_probits = probits[np.arange(len(labels)), labels]
+#         probits_mem  = gt_probits[mem_or_nmem]
+#         probits_nmem = gt_probits[~mem_or_nmem]
 
-        ax = axs[i//n_col, i%n_col]
-        bins = np.linspace(0, 1, 50)
-        ax.hist(probits_mem, bins=bins, histtype='step', label='members')
-        ax.hist(probits_nmem, bins=bins, histtype='step', label='non-members')
-        ax.set_yscale('log')
-        ax.set_title(defence, fontsize=10)
-        ax.legend(fontsize=9)
+#         ax = axs[i//n_col, i%n_col]
+#         bins = np.linspace(0, 1, 50)
+#         ax.hist(probits_mem, bins=bins, histtype='step', label='members')
+#         ax.hist(probits_nmem, bins=bins, histtype='step', label='non-members')
+#         ax.set_yscale('log')
+#         ax.set_title(defence, fontsize=10)
+#         ax.legend(fontsize=9)
     
-    i += 1
-    while i < n_col*n_row:
-        axs[i//n_col, i%n_col].axis('off')
-        i += 1
+#     i += 1
+#     while i < n_col*n_row:
+#         axs[i//n_col, i%n_col].axis('off')
+#         i += 1
 
-    plt.suptitle(f'Challenger probits for model {args.model} on dataset {args.dataset}')
-    savefig( os.path.join(results_dir, 'challengers_probits.png') )
-
-    ###########################
-    ## 
-
-    # for i, ver in enumerate(df.index):
-    #     # Confidence values
-    #     x = np.concatenate([df.loc[ver, 'mem'], df.loc[ver, 'nmem']])
-
-    #     # Compute the differences |x_i - x_j|
-    #     x_rep = x[None, :].repeat(len(x), axis=0)
-    #     x_diff = x_rep - x_rep.transpose(1, 0, 2)
-    #     x_dist = np.tril((x_diff**2).sum(axis=-1), -1)
-
-    #     # Compute intra- and inter-class distances
-    #     intra_class_dists = x_dist[mask_labels]
-    #     inter_class_dists = x_dist[~mask_labels & np.tril(np.ones((len(labels), len(labels)), dtype=bool), -1)]
-
-    #     # Plot them
-    #     ax = plt.subplot(3, 4, i+1)
-    #     bins = np.linspace(min(intra_class_dists), max(inter_class_dists), 100)
-    #     ax.hist(intra_class_dists, bins=bins, histtype='step', density=True, label='intra-class distance')
-    #     ax.hist(inter_class_dists, bins=bins, histtype='step', density=True, label='inter-class distance')
-
-    #     # Add gamma distribution approximations
-    #     theta = lambda z: (z * np.log(z)).mean() - z.mean() * (np.log(z)).mean()
-    #     k = lambda z: z.mean() / theta(z)
-
-    #     x = np.linspace(0, max(inter_class_dists), 1000)
-    #     ka, ta = k(intra_class_dists), theta(intra_class_dists)
-    #     ke, te = k(inter_class_dists), theta(inter_class_dists)
-    #     ax.plot(x, stats.gamma.pdf(x, a=ka, scale=ta), color='#444', linestyle='--')
-    #     ax.plot(x, stats.gamma.pdf(x, a=ke, scale=te), color='#444', linestyle='--')
-
-    #     # Compute interesting area
-    #     vv = np.concatenate([intra_class_dists, inter_class_dists])
-    #     m, s = np.mean(vv), np.std(vv)
-    #     bins = np.linspace(min(intra_class_dists), m+3*s, 1000)
-    #     a1, b1 = np.histogram(intra_class_dists, bins=bins, density=True)
-    #     a2, b2 = np.histogram(inter_class_dists, bins=bins, density=True)
-
-    #     # kl_divergence = lambda p, q: np.sum(np.where(p != 0, p * np.log(p / q), 0))
-    #     kl_gamma = lambda k1, t1, k2, t2: (k1 - k2)*psi(k1) - np.log(gamma(k1)) + np.log(gamma(k2)) + k2 * (np.log(t2) - np.log(t1)) + k1 * (t1 - t2) / t2
-    #     ax.set_title(
-    #         r"$\bf{" + ver.replace('_', '~') + "}$"
-    #         f'\n  intersecting area: {sum(np.minimum(a1, a2) * (b1[-1] - b1[0])/len(a1)):.3f}'
-    #         # f'\n  KL: {kl_divergence(np.random.choice(inter_class_dists, size=len(intra_class_dists), replace=False), intra_class_dists):_.0f}'
-    #         f'\n  KL gamma: {kl_gamma(ka, ta, ke, te):.3f}',
-    #         loc='left', fontsize=11
-    #     )
-    #     ax.legend()
+#     plt.suptitle(f'Challenger probits for model {args.model} on dataset {args.dataset}')
+#     savefig( os.path.join(results_dir, 'challengers_probits.png') )
 
 
 def compare_attacks_vs_defences(args, results_dir):

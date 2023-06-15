@@ -112,21 +112,6 @@ class CIFAR10(VisionDataset):
         return "Split: {}".format("Train" if self.train is True else "Test")
 
 
-class CIFAR2(CIFAR10):
-    """
-    CIFAR10 considering only the first two groups of images
-    """
-    def __init__(self, root, indices, transform=None, target_transform=None, download=False):
-        super().__init__(root, indices, transform, target_transform, download)
-        print(self.targets)
-        print(len(self.targets))
-
-        self.data = self.data[self.targets < 2]
-        self.targets = self.targets[self.targets < 2]
-
-        raise Exception('  ## coucou ##')
-
-
 class CIFAR100(CIFAR10):
     """`CIFAR100 <https://www.cs.toronto.edu/~kriz/cifar.html>`_ Dataset.
 
